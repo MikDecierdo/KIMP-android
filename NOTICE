@@ -1,0 +1,19 @@
+KIMP for Android
+Copyright (C) 2026 Kim G. Decierdo
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See the LICENSE file.
+
+The "KIMP" name and the KIMP logo are not covered by the GPL. They identify the
+original app by Kim G. Decierdo; please use a different name and logo if you
+publish a modified version.
+
+Third-party components:
+- youtubedl-android (GPL-3.0): https://github.com/yausername/youtubedl-android
+  bundles yt-dlp (Unlicense), Python (PSF License) and FFmpeg (LGPL/GPL)
+- QuickJS-ng 0.17.0 (MIT): https://github.com/quickjs-ng/quickjs
+- Jetpack Compose and AndroidX (Apache-2.0)
+- Fonts (SIL Open Font License 1.1): Inter, Archivo, Geist Mono, Source Serif 4, Carter One
+Full license texts are in app/src/main/assets/licenses/ and shown in the app (About -> Licenses).

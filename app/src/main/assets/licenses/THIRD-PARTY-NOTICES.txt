@@ -1,0 +1,20 @@
+KIMP - third-party software
+(c) 2026 Kim G. Decierdo
+
+KIMP includes the following open-source software. Full license texts are in
+the "licenses" and "fonts" folders inside the install folder.
+
+Python 3.11              PSF License              https://www.python.org/
+yt-dlp                   The Unlicense            https://github.com/yt-dlp/yt-dlp
+yt-dlp-ejs               The Unlicense / MIT      https://github.com/yt-dlp/ejs
+CustomTkinter            MIT License              https://github.com/TomSchimansky/CustomTkinter
+Pillow                   MIT-CMU License          https://python-pillow.org/
+mutagen                  GPL-2.0-or-later         https://github.com/quodlibet/mutagen
+QuickJS-ng 0.17.0        MIT License              https://github.com/quickjs-ng/quickjs
+FFmpeg 9.0.2 (ffmpeg.exe only)  GPL-3.0 (this build)  https://ffmpeg.org/
+  Build: "essentials" by Gyan Doshi, https://www.gyan.dev/ffmpeg/builds/
+  Source code: https://ffmpeg.org/download.html and the links in
+  licenses\FFmpeg-README.txt.
+
+Fonts (SIL Open Font License 1.1, texts in the fonts folder):
+Inter, Archivo, Geist Mono, Source Serif 4, Carter One
