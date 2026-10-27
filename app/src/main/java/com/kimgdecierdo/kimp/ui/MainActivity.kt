@@ -50,6 +50,7 @@ import com.kimgdecierdo.kimp.engine.Updater
 import com.kimgdecierdo.kimp.ui.components.Hud
 import com.kimgdecierdo.kimp.ui.components.PrimaryButton
 import com.kimgdecierdo.kimp.ui.components.Rule
+import com.kimgdecierdo.kimp.ui.theme.DarkColors
 import com.kimgdecierdo.kimp.ui.theme.Kimp
 import com.kimgdecierdo.kimp.ui.theme.KimpFonts
 import com.kimgdecierdo.kimp.ui.theme.KimpTheme
@@ -105,7 +106,10 @@ fun KimpRoot(vm: MainViewModel) {
     Column(Modifier.fillMaxSize().background(c.bg).systemBarsPadding().imePadding()) {
         Box(Modifier.fillMaxWidth().height(52.dp), contentAlignment = Alignment.Center) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(painterResource(R.drawable.kimp_logo), contentDescription = null, modifier = Modifier.size(26.dp))
+                Image(
+                    painterResource(if (c == DarkColors) R.drawable.kimp_logo_dark else R.drawable.kimp_logo),
+                    contentDescription = null, modifier = Modifier.size(26.dp),
+                )
                 Text("KIMP", Modifier.padding(start = 8.dp), color = c.inkStrong, fontFamily = KimpFonts.brand, fontSize = 22.sp)
             }
         }

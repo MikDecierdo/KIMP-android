@@ -2,4 +2,4 @@
 <!-- The KIMP logo inside the adaptive-icon safe zone -->
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/kimp_logo"
-    android:inset="26%" />
+    android:inset="29%" />

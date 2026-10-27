@@ -1,4 +1,4 @@
-<p align="center"><img src="app/src/main/res/drawable/kimp_logo.png" width="88" alt="KIMP logo"></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="app/src/main/res/drawable/kimp_logo_dark.png"><img src="app/src/main/res/drawable/kimp_logo.png" width="88" alt="KIMP logo"></picture></p>
 
 <h1 align="center">KIMP for Android</h1>
 <p align="center"><b>YouTube to MP3 and MP4 on your phone.</b> Paste a link, pick what to save, done.<br>
