@@ -13,17 +13,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kimgdecierdo.kimp.BuildConfig
@@ -45,6 +48,7 @@ import com.kimgdecierdo.kimp.ui.components.Tile
 import com.kimgdecierdo.kimp.ui.components.TileGrid
 import com.kimgdecierdo.kimp.ui.theme.Kimp
 import com.kimgdecierdo.kimp.ui.theme.KimpFonts
+import kotlinx.coroutines.delay
 
 private val VERSION = BuildConfig.VERSION_NAME
 private const val DEVELOPER = "Kim G. Decierdo"
@@ -81,15 +85,17 @@ fun MusicScreen(vm: MainViewModel) {
         SectionStrip("Type")
         TileGrid(
             listOf(Tile("Song"), Tile("Playlist")),
-            selected = if (vm.musicPlaylist) 1 else 0, columns = 2, enabled = busy == null,
+            selected = if (vm.musicPlaylist) 1 else 0, columns = 2, enabled = true,
         ) { vm.musicPlaylist = it == 1 }
         Rule()
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SecondaryButton("Stop", vm::stop, enabled = busy == Kind.MUSIC, color = c.danger)
-            PrimaryButton("Download MP3 ↓", vm::startMusic, Modifier.weight(1f), enabled = busy == null && vm.musicUrl.isNotBlank())
+            PrimaryButton("Download MP3 ↓", vm::startMusic, Modifier.weight(1f), enabled = vm.musicUrl.isNotBlank())
         }
         SavesTo("Music/KIMP")
+        QueueNote(vm.musicNote) { vm.clearNote(Kind.MUSIC) }
         ProgressPanel(panel)
+        Queue(vm)
     }
 }
 
@@ -107,7 +113,7 @@ fun VideoScreen(vm: MainViewModel) {
         }
         SecondaryButton(
             "Find qualities", vm::findQualities, Modifier.fillMaxWidth().padding(16.dp),
-            enabled = busy == null && vm.probe !is MainViewModel.Probe.Loading,
+            enabled = vm.probe !is MainViewModel.Probe.Loading,
         )
         when (val probe = vm.probe) {
             MainViewModel.Probe.Idle -> Unit
@@ -127,7 +133,7 @@ fun VideoScreen(vm: MainViewModel) {
                 )
                 TileGrid(
                     probe.result.options.map { Tile(it.label, it.hint) },
-                    selected = vm.quality, columns = 3, enabled = busy == null,
+                    selected = vm.quality, columns = 3, enabled = true,
                 ) { vm.quality = it }
             }
         }
@@ -136,11 +142,49 @@ fun VideoScreen(vm: MainViewModel) {
             SecondaryButton("Stop", vm::stop, enabled = busy == Kind.VIDEO, color = c.danger)
             PrimaryButton(
                 "Download MP4 ↓", vm::startVideo, Modifier.weight(1f),
-                enabled = busy == null && vm.probe is MainViewModel.Probe.Ready && vm.quality != null,
+                enabled = vm.probe is MainViewModel.Probe.Ready && vm.quality != null,
             )
         }
         SavesTo("Movies/KIMP")
+        QueueNote(vm.videoNote) { vm.clearNote(Kind.VIDEO) }
         ProgressPanel(panel)
+        Queue(vm)
+    }
+}
+
+/** "Added to queue" for a few seconds under the Download button. */
+@Composable
+private fun QueueNote(note: String?, onTimeout: () -> Unit) {
+    if (note == null) return
+    LaunchedEffect(note) {
+        delay(3000)
+        onTimeout()
+    }
+    Hud(note, Modifier.padding(start = 16.dp, bottom = 12.dp), color = Kimp.colors.accentInk)
+}
+
+/** The waiting downloads (music and video share one queue), each removable. */
+@Composable
+private fun Queue(vm: MainViewModel) {
+    val c = Kimp.colors
+    val items by Downloads.queue.collectAsState()
+    if (items.isEmpty()) return
+    SectionStrip("Queue  ·  ${items.size}")
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        items.forEach { item ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Hud(if (item.job.kind == Kind.MUSIC) "MP3" else "MP4", Modifier.width(40.dp), color = c.faint)
+                Text(
+                    item.name, Modifier.weight(1f), color = c.ink, fontFamily = KimpFonts.sans, fontSize = 14.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "✕", Modifier.clickable { vm.removeFromQueue(item.id) }.padding(horizontal = 12.dp, vertical = 10.dp),
+                    color = c.muted, fontSize = 16.sp,
+                )
+            }
+        }
+        SecondaryButton("Clear queue", vm::clearQueue, Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp))
     }
 }
 

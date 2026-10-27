@@ -22,8 +22,8 @@ android {
         targetSdk = 36
         // -PkimpVersionName=1.0.0 builds an "older" app (versionCode 1), used to test the self-updater
         val testVersion = providers.gradleProperty("kimpVersionName").orNull
-        versionCode = if (testVersion != null) 1 else 4
-        versionName = testVersion ?: "1.0.3"
+        versionCode = if (testVersion != null) 1 else 5
+        versionName = testVersion ?: "1.0.4"
     }
 
     signingConfigs {

@@ -29,67 +29,85 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 
-/** Runs one download in the foreground, so it keeps going with the screen off. */
+/** Works through the download queue in the foreground, one job at a time, so it keeps going with the screen off. */
 class DownloadService : Service() {
 
     companion object {
         private const val CHANNEL = "downloads"
         private const val NOTIFICATION_ID = 1
         private const val ACTION_STOP = "com.kimgdecierdo.kimp.STOP"
+        private const val ACTION_STOP_ALL = "com.kimgdecierdo.kimp.STOP_ALL"
 
-        fun start(context: Context, job: Job) {
-            val intent = Intent(context, DownloadService::class.java)
-                .putExtra("kind", job.kind.name)
-                .putExtra("url", job.url)
-                .putExtra("playlist", job.playlist)
-                .putExtra("height", job.height ?: -1)
-                .putExtra("label", job.label)
-            ContextCompat.startForegroundService(context, intent)
+        /** Queues a job and makes sure the service is working through the queue. */
+        fun enqueue(context: Context, job: Job, name: String): Boolean {
+            if (!Downloads.enqueue(job, name)) return false
+            ContextCompat.startForegroundService(context, Intent(context, DownloadService::class.java))
+            return true
         }
 
+        /** Stops the current download; the next one in the queue starts. */
         fun stop(context: Context) {
             context.startService(Intent(context, DownloadService::class.java).setAction(ACTION_STOP))
+        }
+
+        /** Empties the queue and stops the current download. */
+        fun stopAll(context: Context) {
+            context.startService(Intent(context, DownloadService::class.java).setAction(ACTION_STOP_ALL))
         }
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var processId: String? = null
     @Volatile private var stopRequested = false
+    @Volatile private var lastStartId = 0
+    private val working = AtomicBoolean(false)
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            stopRequested = true
-            processId?.let { YoutubeDL.getInstance().destroyProcessById(it) }
+        when (intent?.action) {
+            ACTION_STOP_ALL -> {
+                Downloads.clear()
+                stopCurrent()
+            }
+            ACTION_STOP -> stopCurrent()
+        }
+        if (intent?.action != null) {
+            if (!working.get()) stopSelfResult(startId)
             return START_NOT_STICKY
         }
-        val job = intent?.let {
-            Job(
-                kind = Kind.valueOf(it.getStringExtra("kind") ?: return@let null),
-                url = it.getStringExtra("url") ?: return@let null,
-                playlist = it.getBooleanExtra("playlist", false),
-                height = it.getIntExtra("height", -1).takeIf { h -> h > 0 },
-                label = it.getStringExtra("label") ?: "",
-            )
-        }
+        lastStartId = startId
         createChannel()
         ServiceCompat.startForeground(
             this, NOTIFICATION_ID, notification("Starting...", 0, indeterminate = true),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
         )
-        if (job == null || !Downloads.tryBegin(job)) {
-            stopSelfResult(startId)
-            return START_NOT_STICKY
-        }
-        stopRequested = false
-        scope.launch {
-            run(job)
-            ServiceCompat.stopForeground(this@DownloadService, ServiceCompat.STOP_FOREGROUND_REMOVE)
-            stopSelf()
-        }
+        if (working.compareAndSet(false, true)) scope.launch { work() }
         return START_NOT_STICKY
+    }
+
+    private fun stopCurrent() {
+        if (Downloads.current.value == null) return
+        stopRequested = true
+        processId?.let { YoutubeDL.getInstance().destroyProcessById(it) }
+    }
+
+    /** The only worker: runs queued jobs until the queue is empty, then lets the service stop. */
+    private suspend fun work() {
+        while (true) {
+            while (true) {
+                val item = Downloads.next() ?: break
+                stopRequested = false
+                run(item.job)
+            }
+            working.set(false)
+            // A job queued between the last next() and here must not be left waiting
+            if (Downloads.queue.value.isEmpty() || !working.compareAndSet(false, true)) break
+        }
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelfResult(lastStartId)  // stays alive if another job came in meanwhile
     }
 
     private suspend fun run(job: Job) {
@@ -197,9 +215,20 @@ class DownloadService : Service() {
                     PendingIntent.FLAG_IMMUTABLE,
                 ),
             )
+            .apply {
+                if (Downloads.queue.value.isNotEmpty()) addAction(
+                    0, "Stop all",
+                    PendingIntent.getService(
+                        this@DownloadService, 2, Intent(this@DownloadService, DownloadService::class.java).setAction(ACTION_STOP_ALL),
+                        PendingIntent.FLAG_IMMUTABLE,
+                    ),
+                )
+            }
             .build()
 
     private fun updateNotification(text: String, percent: Int) {
-        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(text, percent))
+        val waiting = Downloads.queue.value.size
+        val line = if (waiting > 0) "$text  ·  $waiting waiting" else text
+        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(line, percent))
     }
 }

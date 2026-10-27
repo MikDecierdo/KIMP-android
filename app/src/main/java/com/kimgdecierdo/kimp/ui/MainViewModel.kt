@@ -36,12 +36,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var quality by mutableStateOf<Int?>(null)
     var engineMessage by mutableStateOf<String?>(null)
         private set
+    /** "Added to queue" / "Already in the queue" under each tab's Download button. */
+    var musicNote by mutableStateOf<String?>(null)
+        private set
+    var videoNote by mutableStateOf<String?>(null)
+        private set
     private var probeJob: kotlinx.coroutines.Job? = null
 
+    /** Queues the link and clears the field, so the next link can go straight in. */
     fun startMusic() {
         val url = musicUrl.trim()
-        if (url.isEmpty() || Downloads.busy.value != null) return
-        DownloadService.start(getApplication(), Job(Kind.MUSIC, url, musicPlaylist))
+        if (url.isEmpty()) return
+        val waiting = Downloads.busy.value != null
+        val name = shortLink(url) + if (musicPlaylist) "  ·  playlist" else ""
+        musicNote = if (DownloadService.enqueue(getApplication(), Job(Kind.MUSIC, url, musicPlaylist), name)) {
+            musicUrl = ""
+            if (waiting) "Added to queue" else null
+        } else {
+            "Already in the queue"
+        }
     }
 
     fun findQualities() {
@@ -69,16 +82,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun startVideo() {
         val ready = probe as? Probe.Ready ?: return
         val index = quality ?: return
-        if (Downloads.busy.value != null) return
         if (videoUrl.trim() != ready.result.url) {
             probe = Probe.Failed("The link changed. Press Find qualities again")
             return
         }
         val option = ready.result.options[index]
-        DownloadService.start(getApplication(), Job(Kind.VIDEO, ready.result.url, false, option.height, option.label))
+        val waiting = Downloads.busy.value != null
+        val job = Job(Kind.VIDEO, ready.result.url, false, option.height, option.label)
+        videoNote = if (DownloadService.enqueue(getApplication(), job, "${ready.result.title}  ·  ${option.label}")) {
+            videoUrl = ""
+            probe = Probe.Idle
+            quality = null
+            if (waiting) "Added to queue" else null
+        } else {
+            "Already in the queue"
+        }
     }
 
     fun stop() = DownloadService.stop(getApplication())
+
+    fun removeFromQueue(id: Long) = Downloads.remove(id)
+
+    fun clearNote(kind: Kind) {
+        if (kind == Kind.MUSIC) musicNote = null else videoNote = null
+    }
+
+    fun clearQueue() = Downloads.clear()
 
     fun updateEngine() {
         viewModelScope.launch {
@@ -105,6 +134,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         musicUrl = url
         videoUrl = url
     }
+
+    private fun shortLink(url: String) = url.replace(Regex("""^https?://(www\.|m\.)?"""), "")
 
     private fun friendly(e: Exception): String =
         e.message?.lines()?.lastOrNull { it.isNotBlank() }?.removePrefix("ERROR: ")?.trim() ?: "Something went wrong"
