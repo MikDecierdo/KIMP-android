@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.kimgdecierdo.kimp.Prefs
 import com.kimgdecierdo.kimp.R
 import com.kimgdecierdo.kimp.engine.Updater
@@ -54,6 +55,7 @@ import com.kimgdecierdo.kimp.ui.theme.DarkColors
 import com.kimgdecierdo.kimp.ui.theme.Kimp
 import com.kimgdecierdo.kimp.ui.theme.KimpFonts
 import com.kimgdecierdo.kimp.ui.theme.KimpTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels()
@@ -84,6 +86,13 @@ class MainActivity : ComponentActivity() {
             }
             KimpTheme(dark) { KimpRoot(vm) }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Look for a new KIMP each time the app comes up until a check gets through,
+        // so a phone that was offline at launch still hears about updates.
+        if (Updater.state.value == Updater.State.Idle) lifecycleScope.launch { Updater.check(quiet = true) }
     }
 
     override fun onNewIntent(intent: Intent) {
