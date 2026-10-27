@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -109,38 +108,30 @@ fun SecondaryButton(
     }
 }
 
-/** Eyebrow strip like "01 / LINK" between two rules. */
+/** Small label like "LINK" between two rules. */
 @Composable
-fun SectionStrip(number: String, title: String, hint: String = "") {
-    val c = Kimp.colors
+fun SectionStrip(title: String) {
     Column {
         Rule()
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Hud(number, color = c.faint)
-            Hud(" / ", color = c.faint)
-            Hud(title)
-            Spacer(Modifier.weight(1f))
-            if (hint.isNotEmpty()) Hud(hint, Modifier.padding(start = 12.dp), color = c.faint)
-        }
+        Hud(title, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp))
         Rule()
     }
 }
 
-/** "Download *music.*": Archivo with an italic Source Serif accent word, under a blue kicker. */
+/** "Download *music.*": Archivo with an italic Source Serif accent word. */
 @Composable
-fun Headline(plain: String, italic: String, kicker: String, intro: String) {
+fun Headline(plain: String, italic: String) {
     val c = Kimp.colors
-    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 20.dp)) {
-        Hud(kicker, color = c.accentInk)
-        Text(
-            buildAnnotatedString {
-                withStyle(SpanStyle(fontFamily = KimpFonts.display, fontWeight = FontWeight.Medium, color = c.inkStrong)) { append(plain) }
-                withStyle(SpanStyle(fontFamily = KimpFonts.serif, fontStyle = FontStyle.Italic, color = c.muted)) { append(" $italic") }
-            },
-            Modifier.padding(top = 8.dp), fontSize = 38.sp, lineHeight = 42.sp, letterSpacing = (-0.03).em,
-        )
-        Body(intro, Modifier.padding(top = 8.dp), color = c.muted)
-    }
+    Text(
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontFamily = KimpFonts.display, fontWeight = FontWeight.Medium, color = c.inkStrong)) { append(plain) }
+            withStyle(SpanStyle(fontFamily = KimpFonts.serif, fontStyle = FontStyle.Italic, color = c.muted)) {
+                append(if (plain.isEmpty()) italic else " $italic")
+            }
+        },
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 20.dp),
+        fontSize = 38.sp, lineHeight = 42.sp, letterSpacing = (-0.03).em,
+    )
 }
 
 @Composable
@@ -164,7 +155,7 @@ fun LinkField(value: String, onValueChange: (String) -> Unit, onGo: () -> Unit, 
     )
 }
 
-data class Tile(val title: String, val hint: String)
+data class Tile(val title: String, val hint: String = "")
 
 /** Ruled grid of cells sharing 1dp dividers; the selected cell is fully inverted. */
 @Composable
@@ -181,17 +172,18 @@ fun TileGrid(tiles: List<Tile>, selected: Int?, columns: Int, enabled: Boolean, 
                             .fillMaxHeight()
                             .background(if (on) c.invertBg else c.bg)
                             .clickable(enabled = enabled) { onSelect(index) }
-                            .padding(14.dp),
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
                     ) {
-                        Hud("%02d".format(index + 1), color = if (on) c.invertMuted else c.faint)
                         Text(
-                            tile.title, Modifier.padding(top = 6.dp), color = if (on) c.invertFg else c.inkStrong,
+                            tile.title, color = if (on) c.invertFg else c.inkStrong,
                             fontFamily = KimpFonts.display, fontWeight = FontWeight.Medium, fontSize = 17.sp,
                         )
-                        Text(
-                            tile.hint, color = if (on) c.invertMuted else c.muted, fontFamily = KimpFonts.sans,
-                            fontSize = 12.sp, lineHeight = 16.sp,
-                        )
+                        if (tile.hint.isNotEmpty()) {
+                            Text(
+                                tile.hint, color = if (on) c.invertMuted else c.muted, fontFamily = KimpFonts.sans,
+                                fontSize = 12.sp, lineHeight = 16.sp,
+                            )
+                        }
                     }
                 }
                 repeat(columns - row.size) { Box(Modifier.weight(1f).fillMaxHeight().background(c.bg)) }
@@ -200,9 +192,10 @@ fun TileGrid(tiles: List<Tile>, selected: Int?, columns: Int, enabled: Boolean, 
     }
 }
 
-/** Title, thin progress bar, status line and activity log for one tab. */
+/** Title, thin progress bar, status line and activity log for one tab; hidden until something happens. */
 @Composable
 fun ProgressPanel(state: PanelState) {
+    if (state == PanelState()) return
     val c = Kimp.colors
     Column(Modifier.fillMaxWidth().padding(16.dp)) {
         Text(
@@ -213,7 +206,7 @@ fun ProgressPanel(state: PanelState) {
             Box(Modifier.fillMaxWidth(state.progress.coerceIn(0f, 1f)).fillMaxHeight().background(c.accent))
         }
         Hud(state.status, Modifier.padding(top = 8.dp))
-        Column(
+        if (state.log.isNotEmpty()) Column(
             Modifier
                 .padding(top = 10.dp)
                 .fillMaxWidth()

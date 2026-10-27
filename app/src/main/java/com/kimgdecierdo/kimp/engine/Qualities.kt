@@ -10,16 +10,6 @@ import kotlin.math.min
 data class QualityOption(val height: Int, val label: String, val hint: String)
 data class ProbeResult(val url: String, val title: String, val detail: String, val options: List<QualityOption>)
 
-fun qualityName(lines: Int): String = when {
-    lines <= 240 -> "Low"
-    lines <= 480 -> "SD"
-    lines <= 720 -> "HD"
-    lines <= 1080 -> "Full HD"
-    lines <= 1440 -> "2K"
-    lines <= 2160 -> "4K"
-    else -> "8K"
-}
-
 /** Finds the resolutions a video really has (ported from the Windows app's probe_qualities). */
 suspend fun probeQualities(context: Context, url: String): ProbeResult = withContext(Dispatchers.IO) {
     Engine.awaitReady()
@@ -57,14 +47,14 @@ suspend fun probeQualities(context: Context, url: String): ProbeResult = withCon
         val pick = avc.ifEmpty { group }.maxBy { it.optDouble("tbr", 0.0) }
         // name by the shorter side, so a vertical 1080x1920 Short reads "1080p"
         val lines = min(height, pick.optInt("width", height).takeIf { it > 0 } ?: height)
-        var hint = qualityName(lines)
-        if (group.maxOf { it.optDouble("fps", 0.0) } >= 50) hint += " · 60 fps"
+        val parts = mutableListOf<String>()
+        if (group.maxOf { it.optDouble("fps", 0.0) } >= 50) parts += "60 fps"
         val videoSize = size(pick)
         if (videoSize > 0) {
-            val total = videoSize + if (str(pick, "acodec") in listOf(null, "none")) audioSize else 0L
-            hint += "\n≈ ${"%,d".format(total / 1_000_000)} MB"
+            val mb = (videoSize + if (str(pick, "acodec") in listOf(null, "none")) audioSize else 0L) / 1_000_000
+            parts += if (mb < 1) "<1 MB" else "${"%,d".format(mb)} MB"
         }
-        QualityOption(height, "${lines}p", hint)
+        QualityOption(height, "${lines}p", parts.joinToString(" · "))
     }
     if (options.isEmpty()) throw IllegalArgumentException("No video qualities found for that link.")
 
