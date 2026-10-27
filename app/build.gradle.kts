@@ -20,8 +20,10 @@ android {
         applicationId = "com.kimgdecierdo.kimp"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.1"
+        // -PkimpVersionName=1.0.0 builds an "older" app (versionCode 1), used to test the self-updater
+        val testVersion = providers.gradleProperty("kimpVersionName").orNull
+        versionCode = if (testVersion != null) 1 else 3
+        versionName = testVersion ?: "1.0.2"
     }
 
     signingConfigs {
@@ -66,6 +68,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

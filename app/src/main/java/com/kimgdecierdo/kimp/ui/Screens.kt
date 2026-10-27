@@ -26,10 +26,12 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kimgdecierdo.kimp.BuildConfig
 import com.kimgdecierdo.kimp.Prefs
 import com.kimgdecierdo.kimp.engine.Downloads
 import com.kimgdecierdo.kimp.engine.Engine
 import com.kimgdecierdo.kimp.engine.Kind
+import com.kimgdecierdo.kimp.engine.Updater
 import com.kimgdecierdo.kimp.ui.components.Body
 import com.kimgdecierdo.kimp.ui.components.Headline
 import com.kimgdecierdo.kimp.ui.components.Hud
@@ -44,7 +46,7 @@ import com.kimgdecierdo.kimp.ui.components.TileGrid
 import com.kimgdecierdo.kimp.ui.theme.Kimp
 import com.kimgdecierdo.kimp.ui.theme.KimpFonts
 
-private const val VERSION = "1.0.1"
+private val VERSION = BuildConfig.VERSION_NAME
 private const val DEVELOPER = "Kim G. Decierdo"
 private const val SOURCE_URL = "https://github.com/MikDecierdo/KIMP-android"
 
@@ -148,6 +150,7 @@ fun SettingsScreen(vm: MainViewModel) {
     val context = LocalContext.current
     val theme by Prefs.theme.collectAsState()
     val status by Engine.status.collectAsState()
+    val update by Updater.state.collectAsState()
     Page {
         Headline("", "Settings.")
         SectionStrip("Theme")
@@ -170,6 +173,25 @@ fun SettingsScreen(vm: MainViewModel) {
             SecondaryButton(
                 "Update yt-dlp", vm::updateEngine, Modifier.fillMaxWidth().padding(top = 6.dp),
                 enabled = status is Engine.Status.Ready,
+            )
+        }
+        SectionStrip("App")
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Body("KIMP $VERSION")
+            when (val u = update) {
+                Updater.State.Checking -> Hud("Checking...")
+                Updater.State.UpToDate -> Hud("Up to date")
+                is Updater.State.Failed -> Hud(u.message, color = c.danger)
+                is Updater.State.Available -> Hud("${u.release.version} is available", color = c.accentInk)
+                is Updater.State.Downloading -> Hud("Downloading  ${(u.progress * 100).toInt()}%", color = c.accentInk)
+                Updater.State.Idle -> Unit
+            }
+            val available = update as? Updater.State.Available
+            SecondaryButton(
+                if (available != null) "Update to ${available.release.version}" else "Check for updates",
+                { if (available != null) vm.installUpdate(available.release) else vm.checkUpdate() },
+                Modifier.fillMaxWidth().padding(top = 6.dp),
+                enabled = update !is Updater.State.Checking && update !is Updater.State.Downloading,
             )
         }
     }

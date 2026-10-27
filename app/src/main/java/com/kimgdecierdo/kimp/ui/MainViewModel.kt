@@ -6,12 +6,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.kimgdecierdo.kimp.KimpApp
 import com.kimgdecierdo.kimp.Prefs
 import com.kimgdecierdo.kimp.engine.Downloads
 import com.kimgdecierdo.kimp.engine.Engine
 import com.kimgdecierdo.kimp.engine.Job
 import com.kimgdecierdo.kimp.engine.Kind
 import com.kimgdecierdo.kimp.engine.ProbeResult
+import com.kimgdecierdo.kimp.engine.Updater
 import com.kimgdecierdo.kimp.engine.defaultQuality
 import com.kimgdecierdo.kimp.engine.probeQualities
 import com.kimgdecierdo.kimp.service.DownloadService
@@ -83,6 +85,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             engineMessage = "Updating yt-dlp..."
             engineMessage = Engine.update(getApplication())
         }
+    }
+
+    fun checkUpdate() {
+        viewModelScope.launch { Updater.check() }
+    }
+
+    /** Runs in the app scope so the download carries on if this screen is closed. */
+    fun installUpdate(release: Updater.Release) {
+        val app = getApplication<KimpApp>()
+        app.scope.launch { Updater.install(app, release) }
     }
 
     fun setTheme(value: String) = Prefs.setTheme(getApplication(), value)

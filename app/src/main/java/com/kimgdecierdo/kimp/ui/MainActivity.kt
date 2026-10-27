@@ -46,6 +46,9 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kimgdecierdo.kimp.Prefs
 import com.kimgdecierdo.kimp.R
+import com.kimgdecierdo.kimp.engine.Updater
+import com.kimgdecierdo.kimp.ui.components.Hud
+import com.kimgdecierdo.kimp.ui.components.PrimaryButton
 import com.kimgdecierdo.kimp.ui.components.Rule
 import com.kimgdecierdo.kimp.ui.theme.Kimp
 import com.kimgdecierdo.kimp.ui.theme.KimpFonts
@@ -123,6 +126,7 @@ fun KimpRoot(vm: MainViewModel) {
             }
         }
         Rule()
+        UpdateBanner(vm)
         Box(Modifier.weight(1f)) {
             when (tab) {
                 "Music" -> MusicScreen(vm)
@@ -132,4 +136,24 @@ fun KimpRoot(vm: MainViewModel) {
             }
         }
     }
+}
+
+/** One line under the tabs when a newer KIMP is out. */
+@Composable
+private fun UpdateBanner(vm: MainViewModel) {
+    val c = Kimp.colors
+    val update by Updater.state.collectAsStateWithLifecycle()
+    val text = when (val u = update) {
+        is Updater.State.Available -> "KIMP ${u.release.version} is available"
+        is Updater.State.Downloading -> "Downloading update  ${(u.progress * 100).toInt()}%"
+        else -> return
+    }
+    Row(
+        Modifier.fillMaxWidth().background(c.raised).padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Hud(text, Modifier.weight(1f), color = c.accentInk)
+        (update as? Updater.State.Available)?.let { PrimaryButton("Update", { vm.installUpdate(it.release) }) }
+    }
+    Rule()
 }
